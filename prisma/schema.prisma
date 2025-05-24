@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL_DEV")
+}
+
+enum Role {
+  ADMIN
+  SELLER
+  CUSTOMER
+}
+
+model User {
+  id String @id @unique @default(uuid())
+
+  name            String
+  email           String @unique
+  phoneNumber     Int?
+  profileImageUrl String
+  type            Role   @default(CUSTOMER)
+
+  password String?
+
+  //for sheller
+  isApproved Boolean @default(false)
+
+  //relation
+  address Address[]
+  product Product[]
+  orders  Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Address {
+  id     String @id @unique @default(uuid())
+  userId String
+
+  country  String
+  state    String
+  city     String
+  street   String?
+  pincode  Int
+  landMark String
+
+  //relation
+  user  User    @relation(fields: [userId], references: [id])
+  orders Order[]
+}
+
+model Product {
+  id           String @id @unique @default(uuid())
+  name         String
+  description  String
+  price        Int
+  stock        Int
+  displayImage String
+  discount     Int    @default(0)
+
+  //relation to category , one product belong to one category
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  //relaton to the seller one seller can create multiple product
+  sellerId String
+  seller   User   @relation(fields: [sellerId], references: [id])
+
+  //reloation to iamge model
+  images ProductImage[]
+
+  //relation to order item
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+//product images
+model ProductImage {
+  id              String @id @unique @default(uuid())
+  productImageUrl String
+  fileId          String? //for imagekit operation
+
+  //relationto product
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Category {
+  id       String @id   @unique @default(uuid())
+  name     String
+  products Product[] // a category belong to many product
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id String @id @unique @default(uuid())
+
+  totalAmount Float
+  status      OrderStatus @default(PENDING)
+
+  //relation in between order and the orderItem
+  items OrderItem[]
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  addressId String
+  address   Address @relation(fields: [addressId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model OrderItem {
+  id           String @id @unique @default(uuid())
+  orderId      String
+  productId    String
+  quantity     Int
+  productPrice Float
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
