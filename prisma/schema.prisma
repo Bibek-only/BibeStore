@@ -24,10 +24,10 @@ model User {
   id String @id @unique @default(uuid())
 
   name            String
-  email           String @unique
-  phoneNumber     Int?
+  email           String  @unique
+  phoneNumber     String?
   profileImageUrl String
-  type            Role   @default(CUSTOMER)
+  type            Role    @default(CUSTOMER)
 
   password String?
 
@@ -35,9 +35,14 @@ model User {
   isApproved Boolean @default(false)
 
   //relation
-  address Address[]
-  product Product[]
-  orders  Order[]
+  address       Address[]
+  product       Product[]
+  orders        Order[]
+  reviews       Review[]
+  transactions  Transaction[]
+  sellerPayouts SellerPayout[]
+  wishlistItems Wishlist[]
+  isDeleted     Boolean        @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -55,26 +60,34 @@ model Address {
   landMark String
 
   //relation
-  user  User    @relation(fields: [userId], references: [id])
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   orders Order[]
 }
 
+enum ProductCategory {
+  MOBILE
+  LAPTOP
+  TABLET
+  ACCESSORIES
+  AUDIO
+  CAMERA
+}
+
 model Product {
-  id           String @id @unique @default(uuid())
-  name         String
-  description  String
-  price        Int
-  stock        Int
-  displayImage String
-  discount     Int    @default(0)
-
-  //relation to category , one product belong to one category
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
-
+  id                 String          @id @unique @default(uuid())
+  name               String
+  description        String
+  price              Int
+  stock              Int
+  displayImage       String
+  discountPercentage Int             @default(0)
+  isActiveDiscount   Boolean         @default(false)
+  isVisible          Boolean         @default(true)
+  category           ProductCategory
+  isDeleted          Boolean         @default(false)
   //relaton to the seller one seller can create multiple product
-  sellerId String
-  seller   User   @relation(fields: [sellerId], references: [id])
+  sellerId           String
+  seller             User            @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
   //reloation to iamge model
   images ProductImage[]
@@ -82,25 +95,25 @@ model Product {
   //relation to order item
   orderItems OrderItem[]
 
+  //relation to the review
+  reviews Review[]
+
+  //relation to wishlist
+  wishlistedBy Wishlist[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 //product images
 model ProductImage {
-  id              String @id @unique @default(uuid())
+  id              String  @id @unique @default(uuid())
   productImageUrl String
   fileId          String? //for imagekit operation
 
   //relationto product
   productId String
-  product   Product @relation(fields: [productId], references: [id])
-}
-
-model Category {
-  id       String @id   @unique @default(uuid())
-  name     String
-  products Product[] // a category belong to many product
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 enum OrderStatus {
@@ -116,15 +129,17 @@ model Order {
 
   totalAmount Float
   status      OrderStatus @default(PENDING)
-
+  isDeleted   Boolean     @default(false)
   //relation in between order and the orderItem
-  items OrderItem[]
+  items       OrderItem[]
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   addressId String
-  address   Address @relation(fields: [addressId], references: [id])
+  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
+
+  transaction Transaction?
 
   createdAt DateTime @default(now())
 }
@@ -136,6 +151,76 @@ model OrderItem {
   quantity     Int
   productPrice Float
 
-  order   Order   @relation(fields: [orderId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id      String  @id @unique @default(uuid())
+  rating  Int     @default(1)
+  comment String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+enum PaymentStatus {
+  INITIATED
+  SUCCESS
+  FAILED
+  REFUNDED
+  CANCELLED
+  PENDING
+}
+
+enum PaymentMethod {
+  CARD
+  UPI
+  WALLET
+  NETBANKING
+  CASH_ON_DELIVERY
+  PAY_LATER
+}
+
+model Transaction {
+  id         String        @id @unique @default(uuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id])
+  orderId    String        @unique
+  order      Order         @relation(fields: [orderId], references: [id])
+  amount     Float
+  method     PaymentMethod
+  status     PaymentStatus
+  paymentRef String?
+  isDeleted  Boolean       @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SellerPayout {
+  id        String   @id @default(uuid())
+  sellerId  String
+  seller    User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  amount    Float
+  paidAt    DateTime @default(now())
+  reference String?
+  isDeleted Boolean  @default(false)
+}
+
+model Wishlist {
+  id String @id @default(uuid())
+
+  userId    String
+  productId String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId]) // prevent duplicates in wishlist
 }
