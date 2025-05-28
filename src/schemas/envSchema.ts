@@ -7,6 +7,9 @@ const envSchema = z.object({
   NEXTAUTH_SECRET: z.string().nonempty("NextAuth secreate is empty"),
   GOOGLE_CLIENT_ID: z.string().nonempty("Google client id is empty"),
   GOOGLE_CLIENT_SECRET: z.string().nonempty("Googe client secreate is empty"),
+  IMAGE_KIT_PUBLIC_KEY: z.string().nonempty("imagekit public key is empyt"),
+  IMAGE_KIT_PRIVATE_KEY: z.string().nonempty("image kit private key is empty"),
+  IMAGE_KIT_URLENDPOINT: z.string().nonempty("image kit urlendpoint is empty"),
   NODE_ENV: z.enum(["development", "production", "test"]).optional(),
 });
 
