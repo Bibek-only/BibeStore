@@ -1,7 +1,10 @@
+"use client"
+import { useSession } from "next-auth/react";
 const page = () => {
+   const session = useSession();
   return (
     <div>
-      Hello
+      {JSON.stringify(session)}
     </div>
   )
 }
