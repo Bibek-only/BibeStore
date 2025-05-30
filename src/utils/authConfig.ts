@@ -41,11 +41,14 @@ export const authConfig = {
   secret: varible.NEXTAUTH_SECRET,
   callbacks: {
     async session({ session, user, token }: any) {
-      console.log("sesstion->", session, "user->", user, "token->", token);
+
       return session;
+
     },
     async jwt({ token, user, account, profile, isNewUser }: any) {
+     
       return token;
+      
     },
   },
 };

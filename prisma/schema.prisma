@@ -28,8 +28,11 @@ model User {
   phoneNumber     String?
   profileImageUrl String?
   type            Role    @default(CUSTOMER)
+  accessToken String?
 
   password String?
+
+  isEmailVerifyed Boolean @default(false)
 
   //for sheller
   isApproved Boolean @default(false)

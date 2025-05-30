@@ -4,6 +4,9 @@ import ApiResponse from "@/utils/ApiResponse";
 import ApiError from "@/utils/ApiError";
 import { signupSchema, signupType } from "@/schemas/export.zodschema";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken"
+import { Emilys_Candy } from "next/font/google";
+import { varible } from "@/schemas/envSchema";
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,6 +29,8 @@ export async function POST(request: NextRequest) {
     }
     const hashPassword = bcrypt.hashSync(data.password, 3);
 
+    
+    
     const user = await prisma.user.create({
       data: {
         name: data.name,
@@ -34,11 +39,25 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const accessToken = jwt.sign({
+      userId: user.id,
+      email: user.email,
+    },varible.NEXTAUTH_SECRET)
+
+    //update user and send the response to the user along with the accesstoken
+    const updateRes = await prisma.user.update({
+      where:{
+        id: user.id
+      },data:{
+        accessToken: accessToken
+      }
+    })
     //send the success request
     return NextResponse.json(
       new ApiResponse(
         200,
         {
+          verifyLink: `${varible.NEXT_AUTH_URL}/api/verify-email/${updateRes.accessToken}`,
           userId: user.id,
           name: user.name,
           email: user.email,
@@ -74,3 +93,4 @@ export async function POST(request: NextRequest) {
 }
 
 //check in db the user is exist of not , then check if not then create if yes then send emil is already taken
+// if email is not found then create the user, and a token with id and the email, and store it in the db, 
