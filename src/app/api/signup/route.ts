@@ -4,9 +4,11 @@ import ApiResponse from "@/utils/ApiResponse";
 import ApiError from "@/utils/ApiError";
 import { signupSchema, signupType } from "@/schemas/export.zodschema";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken"
+import jwt from "jsonwebtoken";
 import { Emilys_Candy } from "next/font/google";
 import { varible } from "@/schemas/envSchema";
+import { sendEmail } from "@/helper/sendMail";
+import { emailVarificationFromat } from "@/utils/mailFromats";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,8 +31,6 @@ export async function POST(request: NextRequest) {
     }
     const hashPassword = bcrypt.hashSync(data.password, 3);
 
-    
-    
     const user = await prisma.user.create({
       data: {
         name: data.name,
@@ -39,34 +39,69 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const accessToken = jwt.sign({
-      userId: user.id,
-      email: user.email,
-    },varible.NEXTAUTH_SECRET)
+    const accessToken = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+      },
+      varible.NEXTAUTH_SECRET
+    );
 
     //update user and send the response to the user along with the accesstoken
     const updateRes = await prisma.user.update({
-      where:{
-        id: user.id
-      },data:{
-        accessToken: accessToken
-      }
-    })
-    //send the success request
+      where: {
+        id: user.id,
+      },
+      data: {
+        accessToken: accessToken,
+      },
+    });
+
+    // Send the verification mail with proper error handling
+    try {
+      const mailFromat = emailVarificationFromat(
+        `${varible.NEXT_AUTH_URL}/api/verify-email/${updateRes.accessToken}`
+      );
+      await sendEmail({
+        to: user.email,
+        subject: "Verify your email",
+        html: mailFromat,
+      });
+    } catch (emailError: any) {
+      console.error("Email sending failed:", emailError);
+
+      // Continue with user creation but notify about email issue
+      return NextResponse.json(
+        new ApiResponse(
+          201, // Still successful signup but with email warning
+          {
+            userId: user.id,
+            name: user.name,
+            email: user.email,
+          },
+          "Account created successfully but verification email could not be sent. Please contact support.",
+          true
+        )
+      );
+    }
+
+    // Send the success request
     return NextResponse.json(
       new ApiResponse(
         200,
         {
-          verifyLink: `${varible.NEXT_AUTH_URL}/api/verify-email/${updateRes.accessToken}`,
           userId: user.id,
           name: user.name,
           email: user.email,
         },
-        "Signup successfull",
+        "Signup successful! Please check your email for verification.",
         true
       )
     );
   } catch (error: any) {
+    // Log the error for debugging
+    console.error("Signup error:", error);
+
     if (error instanceof ApiError) {
       return NextResponse.json(
         {
@@ -84,7 +119,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         message: "Internal Server Error",
-        errors: [],
+        errors: [error.message || "Unknown error occurred"],
         statusCode: 500,
       },
       { status: 500 }
@@ -93,4 +128,4 @@ export async function POST(request: NextRequest) {
 }
 
 //check in db the user is exist of not , then check if not then create if yes then send emil is already taken
-// if email is not found then create the user, and a token with id and the email, and store it in the db, 
+// if email is not found then create the user, and a token with id and the email, and store it in the db,
